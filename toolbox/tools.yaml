@@ -1,0 +1,57 @@
+sources:
+  my-bq-source:
+    kind: bigquery
+    project: hack-to-skill-track2
+
+tools:
+  search_release_notes:
+    kind: bigquery-sql
+    source: my-bq-source
+    description: Search Google Cloud release notes by keyword. Use this to find features, updates, or changes related to a specific topic or service.
+    parameters:
+      - name: keyword
+        type: string
+        description: The keyword or service name to search for (e.g. 'Cloud Run', 'BigQuery')
+    statement: |
+      SELECT product_name, release_note_type, description, published_at
+      FROM `bigquery-public-data.google_cloud_release_notes.release_notes`
+      WHERE LOWER(description) LIKE LOWER(CONCAT('%', @keyword, '%'))
+        OR LOWER(product_name) LIKE LOWER(CONCAT('%', @keyword, '%'))
+      ORDER BY published_at DESC
+      LIMIT 10
+
+  get_recent_releases:
+    kind: bigquery-sql
+    source: my-bq-source
+    description: Get the most recent Google Cloud release notes from the last N days across all products.
+    parameters:
+      - name: days
+        type: integer
+        description: Number of days to look back (e.g. 7, 30)
+    statement: |
+      SELECT product_name, release_note_type, description, published_at
+      FROM `bigquery-public-data.google_cloud_release_notes.release_notes`
+      WHERE published_at >= DATE_SUB(CURRENT_DATE(), INTERVAL @days DAY)
+      ORDER BY published_at DESC
+      LIMIT 20
+
+  get_releases_by_product:
+    kind: bigquery-sql
+    source: my-bq-source
+    description: Get recent release notes for a specific Google Cloud product.
+    parameters:
+      - name: product
+        type: string
+        description: The product name to filter by (e.g. 'Cloud Run', 'BigQuery')
+    statement: |
+      SELECT product_name, release_note_type, description, published_at
+      FROM `bigquery-public-data.google_cloud_release_notes.release_notes`
+      WHERE LOWER(product_name) LIKE LOWER(CONCAT('%', @product, '%'))
+      ORDER BY published_at DESC
+      LIMIT 15
+
+toolsets:
+  my_bq_toolset:
+    - search_release_notes
+    - get_recent_releases
+    - get_releases_by_product
